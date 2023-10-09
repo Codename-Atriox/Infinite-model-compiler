@@ -1,4 +1,5 @@
 ﻿using Assimp;
+using Infinite_module_test;
 using static Infinite_module_test.tag_structs;
 using static System.Net.Mime.MediaTypeNames;
 
@@ -6,13 +7,13 @@ namespace Infinite_model_importer
 {
     internal class Program
     {
-        static void Main(string[] args)
+        static void Main(string[] args) 
         {
             Console.WriteLine("Hello, World!");
-            convert_model_to_tag("C:\\Users\\Joe bingle\\Downloads\\model testing\\shrek.fbx",
+            convert_model_to_tag("C:\\Users\\Joe bingle\\Downloads\\model testing\\shrek3.obj",
                                  "C:\\Users\\Joe bingle\\Downloads\\model testing\\template2.rtgo",
                                  0x24832954,
-                                 "C:\\Users\\Joe bingle\\Downloads\\model testing\\shrek.rtgo");
+                                 "C:\\Users\\Joe bingle\\Downloads\\model testing\\shrek3.rtgo");
         }
 
         static tag load_tag(string file)
@@ -34,8 +35,8 @@ namespace Infinite_model_importer
             // load the 3d model
             Assimp.Scene model;
             Assimp.AssimpContext importer = new Assimp.AssimpContext();
-            importer.SetConfig(new Assimp.Configs.NormalSmoothingAngleConfig(66.0f));
-            model = importer.ImportFile(input_model_path, Assimp.PostProcessPreset.TargetRealTimeMaximumQuality);
+            //importer.SetConfig(new Assimp.Configs.NormalSmoothingAngleConfig(66.0f));
+            model = importer.ImportFile(input_model_path, 0); // Assimp.PostProcessPreset.TargetRealTimeMaximumQuality);
 
             // for now the ideal thing we should do here is just bunch all our stuff into a single mesh part
             // or actually, we're just going to operate on the first mesh, assuming its the one we actually want to import
@@ -71,6 +72,7 @@ namespace Infinite_model_importer
 
                 // preprocess vertex positions to find largest distance so we can normalize
                 // we should fill in the compression data bounds?
+                // this may actually be wrong. // NOTE: halo uses x y & z around different orders than we do, so time to swap them around until they work
                 float bound_x = 0.0f;
                 float bound_x_minus = 0.0f;
                 float bound_y = 0.0f;
@@ -85,11 +87,11 @@ namespace Infinite_model_importer
                     if (Math.Abs(v.Z) > highest_distance) highest_distance = Math.Abs(v.Z);
 
                     if (v.X > bound_x)       bound_x = v.X;
-                    if (v.X < bound_x_minus) bound_x = v.X;
+                    if (v.X < bound_x_minus) bound_x_minus = v.X;
                     if (v.Y > bound_y)       bound_y = v.Y;
-                    if (v.Y < bound_y_minus) bound_y = v.Y;
+                    if (v.Y < bound_y_minus) bound_y_minus = v.Y;
                     if (v.Z > bound_z)       bound_z = v.Z;
-                    if (v.Z < bound_z_minus) bound_z = v.Z;
+                    if (v.Z < bound_z_minus) bound_z_minus = v.Z;
                 }
                 // update compression & per part data
                 rtgo_tag.set_float3("Per Mesh Data[0].Bounds min", new(bound_x, bound_y, bound_z));
@@ -114,11 +116,11 @@ namespace Infinite_model_importer
                     if (Math.Abs(v.Y) > highest_uv0_distance) highest_uv0_distance = Math.Abs(v.Y);
 
                     if (v.X > uv_bound_x)       uv_bound_x = v.X;
-                    if (v.X < uv_bound_x_minus) uv_bound_x = v.X;
+                    if (v.X < uv_bound_x_minus) uv_bound_x_minus = v.X;
                     if (v.Y > uv_bound_y)       uv_bound_y = v.Y;
-                    if (v.Y < uv_bound_y_minus) uv_bound_y = v.Y;
+                    if (v.Y < uv_bound_y_minus) uv_bound_y_minus = v.Y;
                     if (v.Z > uv_bound_z)       uv_bound_z = v.Z;
-                    if (v.Z < uv_bound_z_minus) uv_bound_z = v.Z;
+                    if (v.Z < uv_bound_z_minus) uv_bound_z_minus = v.Z;
                 }
 
 
@@ -177,7 +179,7 @@ namespace Infinite_model_importer
                         // this is how they're packed
                         // buffer[(i * 3)] = ((float)(block & 0x3ff) / 1023u - 0.5f) * 2;
 
-                        uint packed = ((uint)packed_x & 0x3ff) | (((uint)packed_y & 0x3ff) << 10) | (((uint)packed_y & 0x3ff) << 20);
+                        uint packed = ((uint)packed_x & 0x3ff) | (((uint)packed_y & 0x3ff) << 10) | (((uint)packed_z & 0x3ff) << 20);
                         bw.Write(packed);
                     }
 
@@ -204,7 +206,8 @@ namespace Infinite_model_importer
 
                     // and then we finish with the index buffers
                     current_offset += fill_in_buffer_details(rtgo_tag, indices.Length, 4, current_offset, index_block, 0);
-                    foreach (var v in indices) bw.Write(v);
+                    foreach (var v in indices) 
+                        bw.Write(v);
                 }
 
                 // we can now fill in the buffer size details
